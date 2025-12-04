@@ -1,0 +1,10 @@
+[Unit]
+Description=Screen Temperature Adjuster (Login)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=%h/.Xauthority
+ExecStart=path/to/temperature.sh

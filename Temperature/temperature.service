@@ -1,0 +1,10 @@
+[Unit]
+Description=Screen Temperature Adjuster
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=path/to/temperature.sh
+
+[Install]
+WantedBy=default.target
