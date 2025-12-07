@@ -11,13 +11,16 @@
 #   -c, --command CMD            Command to launch the application (required)
 #   -i, --interval SECS          Check interval in seconds (default: 1)
 #   -t, --timeout SECS           Maximum wait time in seconds (default: 30)
-#   -r, --recheck SECS           Seconds to wait before rechecking if window was reshown (default: 3)
+#   -t, --timeout SECS           Maximum wait time in seconds (default: 30)
+#   -r, --watch-time SECS        Seconds to keep watching/minimizing the window after first success (default: 10)
+#   -m, --min-size PIXELS        Minimum window area (width * height) to consider valid (default: 100000)
 #   -a, --args ARGS              Arguments to pass to the command
 #   -h, --help                   Show this help message
 #
 # Examples:
 #   ./open-minimize.sh -n "Mozilla Thunderbird" -c thunderbird
 #   ./open-minimize.sh -n "Slack" -c "slack" -t 20
+#   ./open-minimize.sh -n "Discord" -c "discord" -m 250000
 #   ./open-minimize.sh -n "TickTick" -c "python3 /path/to/ticktick" -i 2 -t 60
 ################################################################################
 
@@ -30,8 +33,8 @@ COMMAND_ARGS=""
 CHECK_INTERVAL=1
 TIMEOUT=30
 VERBOSE=true
-MIN_WINDOW_SIZE=100000  # Minimum window area (width * height) to consider as a real window (e.g., 400x250 = 100000)
-RECHECK_DELAY=3      # Seconds to wait before rechecking if window was reshown
+MIN_WINDOW_SIZE=100000  # Minimum window area (width * height) to consider as a real window
+WATCH_DURATION=10       # Seconds to keep watching/minimizing the window after first success
 
 # Colors for output
 RED='\033[0;31m'
@@ -69,8 +72,12 @@ parse_args() {
                 TIMEOUT="$2"
                 shift 2
                 ;;
-            -r|--recheck)
-                RECHECK_DELAY="$2"
+            -r|--watch-time)
+                WATCH_DURATION="$2"
+                shift 2
+                ;;
+            -m|--min-size)
+                MIN_WINDOW_SIZE="$2"
                 shift 2
                 ;;
             -v|--verbose)
@@ -252,34 +259,47 @@ wait_and_minimize() {
 
                         if [[ $minimize_status -eq 0 ]]; then
                             log "Window minimized successfully"
-
-                            # Wait a moment and verify it stays minimized
-                            # Some apps (like TickTick) may show the window again after initialization
-                            debug "Waiting ${RECHECK_DELAY} seconds to verify window stays minimized..."
-                            sleep "$RECHECK_DELAY"
-
-                            # Check if window is visible using xprop
-                            # If a window is minimized, it has the _NET_WM_STATE_HIDDEN property
-                            local wm_state
-                            wm_state=$(xprop -id "$WINDOW_ID" _NET_WM_STATE 2>/dev/null || echo "")
-                            debug "Window state: $wm_state"
-
-                            if [[ "$wm_state" == *"HIDDEN"* ]]; then
-                                debug "Window remains minimized"
+                            
+                            # Watchdog loop: Keep ensuring it stays minimized for WATCH_DURATION seconds
+                            local watch_start=$(date +%s)
+                            local watch_now
+                            
+                            debug "Entering watchdog mode for ${WATCH_DURATION} seconds..."
+                            
+                            while true; do
+                                watch_now=$(date +%s)
+                                if (( watch_now - watch_start >= WATCH_DURATION )); then
+                                    debug "Watchdog period ended."
+                                    break
+                                fi
+                                
+                                # Check window state
+                                local wm_state
+                                wm_state=$(xprop -id "$WINDOW_ID" _NET_WM_STATE 2>/dev/null || echo "DESTROYED")
+                                
+                                if [[ "$wm_state" == "DESTROYED" ]]; then
+                                    warn "Window destroyed during watchdog period. Resuming search..."
+                                    break # breaks the watchdog loop, falls out to... WHERE?
+                                          # We need to make sure we don't return 0. 
+                                          # We are currently inside `if [[ $minimize_status -eq 0 ]]; then`
+                                          # If we break, we hit the end of that block.
+                                          # We need a flag to say "keep searching".
+                                elif [[ "$wm_state" != *"HIDDEN"* ]]; then
+                                    debug "Window $WINDOW_ID is visible again! Forcing minimize..."
+                                    xdotool windowminimize "$WINDOW_ID" 2>/dev/null || true
+                                fi
+                                
+                                sleep 0.5
+                            done
+                            
+                            # If we are here, either time expired or window destroyed.
+                            # If window exists and is minimized (or we gave up watching), success?
+                            if [[ -n "$WINDOW_ID" ]] && xprop -id "$WINDOW_ID" &>/dev/null; then
+                                log "Watchdog completed. Window appears stable."
                                 return 0
                             else
-                                # Window is visible again, minimize it once more
-                                debug "Window was reshown, minimizing again..."
-                                minimize_output=$(xdotool windowminimize "$WINDOW_ID" 2>&1)
-                                minimize_status=$?
-
-                                if [[ $minimize_status -eq 0 ]]; then
-                                    log "Window re-minimized successfully"
-                                    return 0
-                                else
-                                    warn "Failed to re-minimize window"
-                                    return 1
-                                fi
+                                # Window lost, continue main search loop
+                                debug "Window lost during watchdog. Continuing main search..."
                             fi
                         else
                             debug "xdotool output: $minimize_output"
