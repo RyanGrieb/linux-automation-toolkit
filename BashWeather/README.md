@@ -31,7 +31,7 @@ A lightweight Bash prompt integration that displays the current weather as an em
    export LON="-74.0060"
    ```
 
-3. **Source the Script**:
+3. **Source the Script and Configure Prompt**:
    Add this to your shell config file *after* the exports:
 
    ```bash
@@ -40,8 +40,13 @@ A lightweight Bash prompt integration that displays the current weather as an em
 
    # Add to your prompt (PS1)
    # \u = user, \h = host, \W = current dir
-   PS1="[\u@\h \W] \$WEATHERCHAR $ "
+   PS1="[\u@\h \W] \$WEATHERCHAR  "
+   
+   # Enable dynamic weather updates before each prompt
+   PROMPT_COMMAND=update_weather_prompt
    ```
+   
+   > **Note**: The `PROMPT_COMMAND` ensures the weather emoji updates dynamically based on time of day and weather conditions, not just when you open a new terminal.
 
 4. **Reload Shell**: `source ~/.bashrc` or restart your terminal.
 

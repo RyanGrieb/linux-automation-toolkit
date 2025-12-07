@@ -154,7 +154,7 @@ EOF
 
       local RESPONSEHOLDER=$(getResponse)
 
-      LAST_TIME_CHECKED_WEATHER=$NOW
+      export LAST_TIME_CHECKED_WEATHER=$NOW
       local UPDATED=""
       local ASSIGN_AGAIN=true
 
@@ -165,7 +165,7 @@ EOF
      if [ -n "$s" ] ; then
        local UPDATED="$s" # only adds for later updates, not for prompt initialization
      fi
-     LAST_TIME_CHECKED_WEATHER=$NOW
+     export LAST_TIME_CHECKED_WEATHER=$NOW
      local ASSIGN_AGAIN=true
 
   else
@@ -225,4 +225,11 @@ EOF
   fi
 }
 
+# Function to update weather for prompt (called by PROMPT_COMMAND)
+function update_weather_prompt {
+  runWeather
+}
+
+# Only run weather on initial source, not on every prompt
+# The update_weather_prompt function will handle subsequent updates
 runWeather "$@"
