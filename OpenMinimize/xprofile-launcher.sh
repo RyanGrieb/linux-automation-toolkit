@@ -20,7 +20,7 @@ sleep 2
 "$OPEN_MINIMIZE" --name "Mozilla Thunderbird" --command "thunderbird" --timeout 30 > "$LOG_DIR/thunderbird.log" 2>&1 &
 
 # Launch Discord
-"$OPEN_MINIMIZE" --name "Discord" --command "discord" --min-size 250000 --timeout 30 > "$LOG_DIR/discord.log" 2>&1 &
+#"$OPEN_MINIMIZE" --name "Discord" --command "discord" --min-size 250000 --timeout 30 > "$LOG_DIR/discord.log" 2>&1 &
 
 # Wait a bit before launching TickTick to avoid overwhelming the system at startup
 #sleep 3
