@@ -1,6 +1,13 @@
 #!/bin/bash
 
-if [[ -d "./monero-gui-wallet" ]]; then
+# Start process of downloading monero wallet
+MONERO_HASHES_DL="https://www.getmonero.org/downloads/hashes.txt"
+MONERO_WALLET_DL="https://downloads.getmonero.org/gui/linux64"
+HASHES_FILE="monero_hashes.txt"
+WALLET_ARCHIVE="monero-gui-linux64.tar.bz2"
+WALLET_DIR="monero-gui-wallet"
+
+if [[ -d "./$WALLET_DIR" ]]; then
 	echo "It appears you already have the wallet downloaded."
 
 	while true; do
@@ -8,7 +15,7 @@ if [[ -d "./monero-gui-wallet" ]]; then
 
 	case $yn in 
 		y ) echo "Reinstalling monero wallet.";
-			rm -rf ./monero-gui-wallet/
+			rm -rf "./$WALLET_DIR/"
 			break;;
 		n ) echo "Exiting.";
 			exit 0;;
@@ -36,12 +43,10 @@ else
 	echo "bzip2 is already installed, continuing..."
 fi
 
-# Start process of downloading monero wallet
-MONERO_HASHES_DL=https://www.getmonero.org/downloads/hashes.txt
-MONERO_WALLET_DL=https://downloads.getmonero.org/gui/linux64
 
-#Verify PGP of monero_hashes.txt
-wget https://www.getmonero.org/downloads/hashes.txt -O monero_hashes.txt
+
+# Verify PGP of monero_hashes.txt
+wget "$MONERO_HASHES_DL" -O "$HASHES_FILE"
 
 # Verify the fingerprint of binaryfate.asc
 # Trusted fingerprint for binaryFate <binaryfate@getmonero.org>
@@ -57,12 +62,12 @@ else
     echo "Expected: $TRUSTED_FINGERPRINT"
     echo "Found:    $IMPORTED_FINGERPRINT"
     echo "Exiting for security."
-    rm monero_hashes.txt
+    rm "$HASHES_FILE"
     exit 1
 fi
 
 gpg --import binaryfate.asc >/dev/null 2>&1
-gpg --verify monero_hashes.txt >/dev/null 2>&1
+gpg --verify "$HASHES_FILE" >/dev/null 2>&1
 
 # Determine if the exit code of gpg is a success
 if [[ $? -eq 0 ]]; then
@@ -73,14 +78,14 @@ else
 fi
 
 # Extract desired wallet hash from monero_hashes.txt file
-MONERO_WALLET_HASH=$(grep "monero-gui-linux-x64-" "monero_hashes.txt" | cut -d' ' -f1)
-rm monero_hashes.txt
+MONERO_WALLET_HASH=$(grep "monero-gui-linux-x64-" "$HASHES_FILE" | cut -d' ' -f1)
+rm "$HASHES_FILE"
 
 # Download monero wallet
-wget https://downloads.getmonero.org/gui/linux64 -O monero-gui-linux64.tar.bz2
+wget "$MONERO_WALLET_DL" -O "$WALLET_ARCHIVE"
 
 # Verify file hash of the monero wallet
-computed_hash=$(sha256sum monero-gui-linux64.tar.bz2 | awk '{print $1}')
+computed_hash=$(sha256sum "$WALLET_ARCHIVE" | awk '{print $1}')
 
 echo "Monero wallet computed hash: $computed_hash"
 
@@ -93,5 +98,5 @@ fi
 
 # Extract the monero wallet file
 echo "Extracting monero wallet..."
-mkdir monero-gui-wallet
-tar -xjf monero-gui-linux64.tar.bz2 -C ./monero-gui-wallet
+mkdir "$WALLET_DIR"
+tar -xjf "$WALLET_ARCHIVE" -C "./$WALLET_DIR"
