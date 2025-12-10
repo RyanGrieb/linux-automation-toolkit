@@ -6,17 +6,22 @@ This directory contains shell scripts designed to assist with verifying digital 
 
 ### 1. `verify.sh`
 
-A general-purpose script to verify GPG signatures for any file. It automatically attempts to fetch missing public keys from a keyserver (`keyserver.ubuntu.com`).
+A general-purpose script to verify GPG signatures for any file or verify files against a SHA512 checksum. It automatically attempts to fetch missing public keys from a keyserver (`keyserver.ubuntu.com`) when verifying GPG signatures.
 
 **Usage:**
 ```bash
+# Verify with a GPG signature file
 ./verify.sh <file> <signature.asc>
+
+# Verify with a SHA512 checksum string
+./verify.sh <file> <sha512_checksum>
 ```
 
 **Features:**
 - Checks for GPG installation.
-- Automatically retrieves keys if they are missing from your keyring.
-- Verifies the signature and outputs a clear Success/Failure status.
+- Automatically retrieves keys if they are missing from your keyring (for GPG verification).
+- Supports direct SHA512 checksum verification by pasting the hash as the second argument.
+- Verifies the signature/checksum and outputs a clear Success/Failure status.
 
 ### 2. `Monero-Wallet-Linux/install_monero_wallet.sh`
 
